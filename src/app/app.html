@@ -1,0 +1,117 @@
+我貼code給妳 先不要說任何畫 等我問問題
+<div class="container">
+  <!-- 左側控制面板 -->
+  <div class="control-panel">
+    <h2>🚀 圖卡快速生成工具</h2>
+
+    <div class="panel-section">
+      <h3>1. 版面與浮水印設定</h3>
+      <div class="radio-group">
+        <label>
+          <input
+            type="radio"
+            [(ngModel)]="orientation"
+            value="portrait"
+            (change)="onOrientationChange()"
+          />
+          垂直 (4:6)
+        </label>
+        <label>
+          <input
+            type="radio"
+            [(ngModel)]="orientation"
+            value="landscape"
+            (change)="onOrientationChange()"
+          />
+          水平 (6:4)
+        </label>
+      </div>
+      <div class="slider-container">
+        <label>浮水印不透明度：{{ wmOpacity }}%</label>
+        <input type="range" min="0" max="100" [(ngModel)]="wmOpacity" />
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <h3>2. 選擇原圖</h3>
+      <input type="file" id="image-input" (change)="loadUserImage($event)" accept="image/*" />
+      <div class="slider-container" style="margin-top: 12px">
+        <label>照片放大 / 縮小：{{ zoomValue }}%</label>
+        <input
+          type="range"
+          min="50"
+          max="300"
+          [(ngModel)]="zoomValue"
+          (input)="handleZoom()"
+          [disabled]="!isImageLoaded"
+        />
+      </div>
+      <small style="color: #666"
+        >💡 溫馨提示：在右側預覽圖上按住滑鼠或用手指拖曳，即可自由調整照片位置！</small
+      >
+    </div>
+
+    <div class="panel-section">
+      <h3>3. 輸入資訊</h3>
+
+      <label>大標題：</label>
+      <input type="text" [(ngModel)]="mainTitle" placeholder="請輸入大標題" />
+
+      <label>小標題 ：</label>
+      <input type="text" [(ngModel)]="subTitle" placeholder="請輸入小標題" />
+
+      <label>客製標籤（限制 2~5 字）：</label>
+      <input type="text" [(ngModel)]="tagText" placeholder="請輸入客製標籤" maxlength="5" />
+    </div>
+
+    <button class="btn-submit" (click)="downloadCardImage()">🚀 生成並下載圖片</button>
+  </div>
+
+  <!-- 右側高清實時預覽 -->
+  <div class="preview-panel">
+    <h2>■ 高清實時預覽</h2>
+
+    <div
+      #cardCaptureArea
+      class="preview-container"
+      [ngClass]="orientation"
+      (mousedown)="onMouseDown($event)"
+      (touchstart)="onTouchStart($event)"
+    >
+      <!-- 圖層 1：使用者圖片 -->
+      <img
+        *ngIf="userImageSrc"
+        [src]="userImageSrc"
+        class="user-uploaded-image"
+        [style.left.px]="imgLeft"
+        [style.top.px]="imgTop"
+        [style.width.px]="imgWidth"
+        [style.height.px]="imgHeight"
+      />
+
+      <!-- 圖層 2：純斜線浮水印（透明度由滑桿控制） -->
+      <img
+        [src]="'template-' + orientation + '-wm.png'"
+        class="overlay-template image-wm-layer"
+        [style.opacity]="wmOpacity / 100"
+      />
+
+      <!-- 圖層 3：底部黑色漸層遮罩（固定 100% 不透明） -->
+      <img
+        [src]="'template-' + orientation + '-nowm.png'"
+        class="overlay-template image-mask-layer"
+      />
+
+      <!-- 圖層 4：客製化動態標籤（切齊 234px 線，疊在大標題正上方） -->
+      <div *ngIf="tagText && tagText.length >= 2" class="single-tag-pill">
+        {{ tagText }}
+      </div>
+
+      <!-- 圖層 5：主副標題文字群組 -->
+      <div class="text-info-group">
+        <div class="view-subtitle" style="font-weight: 00">{{ subTitle }}</div>
+        <div class="view-main-title">{{ mainTitle }}</div>
+      </div>
+    </div>
+  </div>
+</div>

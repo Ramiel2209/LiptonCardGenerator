@@ -1,0 +1,235 @@
+body {
+  font-family: 'Microsoft JhengHei', sans-serif;
+  background-color: #f4f6f9;
+  margin: 0;
+  padding: 20px;
+}
+
+.container {
+  display: flex;
+  gap: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.control-panel {
+  flex: 1;
+  background: #ffffff;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.panel-section {
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.panel-section h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  color: #333;
+}
+
+input[type='text'] {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+.btn-submit {
+  width: 100%;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: bold;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-submit:hover {
+  background-color: #45a049;
+}
+
+.preview-panel {
+  flex: 1;
+  background: #ffffff;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* 預覽視窗容器 */
+.preview-container {
+  position: relative;
+  background-color: #222;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  cursor: grab;
+}
+
+.preview-container.portrait {
+  width: 400px;
+  height: 600px;
+}
+
+.preview-container.landscape {
+  width: 600px;
+  height: 400px;
+}
+
+.user-uploaded-image {
+  position: absolute;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.overlay-template {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+/* 文字資訊群組：精確對齊大標題「舞」字開頭 */
+.text-info-group {
+  position: absolute;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* 確保小標、大標左側絕對切齊一條線 */
+  gap: 2px;
+  z-index: 10;
+}
+
+/* 直式預覽：234px 是立頓圓圈右側、大標題字頭的完美切齊線 */
+.preview-container.portrait .text-info-group {
+  left: 115px;
+  bottom: 46px;
+}
+
+/* 橫式預覽 */
+.preview-container.landscape .text-info-group {
+  left: 116px;
+  bottom: 50px;
+}
+
+.view-subtitle {
+  color: #cccccc;
+  font-size: 13px;
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.view-main-title {
+  color: #ffffff;
+  font-size: 30px;
+  font-weight: bold;
+  text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* 客製化標籤樣式 */
+.single-tag-pill {
+  position: absolute;
+  background-color: #dacfa5;
+  color: #1c1a16;
+  font-weight: bold;
+  font-size: 16px;
+  padding: 4px 16px;
+  border-radius: 15px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+  z-index: 10;
+  white-space: nowrap; /* 不換行，保持一行 */
+}
+
+/* 直式標籤位置：精確切齊 234px（在大標題的正上方，左側對齊一條線） */
+.preview-container.portrait .single-tag-pill {
+  bottom: 110px;
+  right: 40px;
+  left: auto;
+}
+
+/* 橫式標籤位置 */
+.preview-container.landscape .single-tag-pill {
+  bottom: 50px;
+  right: 40px;
+}
+
+.image-wm-layer {
+  z-index: 6; /* 浮水印層，可調透明度 */
+}
+
+.image-mask-layer {
+  z-index: 7; /* 底部漸層遮罩，永遠不透明 */
+  opacity: 1 !important;
+}
+
+/* 手機版排版：設定區與預覽一起縮小並置中 */
+@media (max-width: 768px) {
+  .container {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .control-panel,
+  .preview-panel {
+    width: 85%;
+    margin: 0 auto;
+  }
+
+  .preview-panel {
+    margin-top: 16px;
+    display: flex;
+    justify-content: center;
+  }
+
+  /* 保持比例：直式 4:6，橫式 6:4 */
+  .preview-container.portrait {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 2 / 3;
+  }
+
+  .preview-container.landscape {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 3 / 2;
+  }
+
+  /* 手機版文字群組：用百分比定位 */
+  .preview-container.portrait .text-info-group {
+    left: 29%; /* 原本 115px / 400px ≈ 29% */
+    bottom: 7.6%; /* 原本 46px / 600px ≈ 7.6% */
+  }
+
+  .preview-container.landscape .text-info-group {
+    left: 19.3%; /* 原本 116px / 600px ≈ 19.3% */
+    bottom: 12.5%; /* 原本 50px / 400px ≈ 12.5% */
+  }
+
+  /* 手機版標籤位置：同樣改成百分比 */
+  .preview-container.portrait .single-tag-pill {
+    bottom: 18.3%; /* 原本 110px / 600px ≈ 18.3% */
+    right: 10%; /* 原本 40px / 400px ≈ 10% */
+    left: auto;
+  }
+
+  .preview-container.landscape .single-tag-pill {
+    bottom: 12.5%; /* 原本 50px / 400px ≈ 12.5% */
+    right: 6.7%; /* 原本 40px / 600px ≈ 6.7% */
+  }
+}
