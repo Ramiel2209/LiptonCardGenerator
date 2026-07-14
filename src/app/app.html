@@ -85,6 +85,8 @@
       #cardCaptureArea
       class="preview-container"
       [ngClass]="orientation"
+      [style.width.px]="containerWidthPx"
+      [style.height.px]="containerHeightPx"
       style="position: relative; overflow: hidden"
       (mousedown)="onMouseDown($event)"
       (touchstart)="onTouchStart($event)"

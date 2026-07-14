@@ -71,22 +71,17 @@ input[type='text'] {
 }
 
 /* 預覽視窗容器 */
+/* 注意：寬高不再由 CSS 決定（不論桌機或手機），改由 TS 的
+   calculateContainerSize() 計算後透過 [style.width.px] / [style.height.px]
+   直接綁定在元素上。這是因為 html2canvas 不支援 CSS 的 aspect-ratio
+   屬性，若靠 aspect-ratio 撐出高度，下載出來的圖比例會跑掉。
+   這裡只保留跟尺寸無關的視覺樣式。 */
 .preview-container {
   position: relative;
   background-color: #222;
   overflow: hidden;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
   cursor: grab;
-}
-
-.preview-container.portrait {
-  width: 400px;
-  height: 600px;
-}
-
-.preview-container.landscape {
-  width: 600px;
-  height: 400px;
 }
 
 .user-uploaded-image {
@@ -197,18 +192,8 @@ input[type='text'] {
     justify-content: center;
   }
 
-  /* 保持比例：直式 4:6，橫式 6:4 */
-  .preview-container.portrait {
-    width: 100%;
-    height: auto;
-    aspect-ratio: 2 / 3;
-  }
-
-  .preview-container.landscape {
-    width: 100%;
-    height: auto;
-    aspect-ratio: 3 / 2;
-  }
+  /* 注意：.preview-container 的寬高已改由 TS 直接算 px 綁定，
+     這裡不再需要 width / height / aspect-ratio。 */
 
   /* 手機版文字群組：用百分比定位 */
   .preview-container.portrait .text-info-group {

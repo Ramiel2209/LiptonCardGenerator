@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild, HostListener } from '@angular/core';
+import { Component, ElementRef, ViewChild, HostListener, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import html2canvas, { Options } from 'html2canvas';
@@ -10,7 +10,7 @@ import html2canvas, { Options } from 'html2canvas';
   templateUrl: './app.html',
   styleUrls: ['./app.css'],
 })
-export class App {
+export class App implements AfterViewInit {
   @ViewChild('cardCaptureArea', { static: false }) cardCaptureArea!: ElementRef<HTMLDivElement>;
 
   mode: 'cover' | 'watermark' = 'cover';
@@ -31,6 +31,13 @@ export class App {
   imgWidth: number = 0;
   imgHeight: number = 0;
 
+  // 預覽/擷取容器的實際像素尺寸，由 calculateContainerSize() 算出，
+  // 透過 [style.width.px] / [style.height.px] 直接綁在容器上。
+  // 不再依賴 CSS 的 aspect-ratio，因為 html2canvas 不支援這個屬性，
+  // 靠它撐高度會讓下載出來的圖比例跑掉（桌機版用寫死的 px 才會正常）。
+  containerWidthPx: number = 400;
+  containerHeightPx: number = 600;
+
   private baseWidth: number = 0;
   private baseHeight: number = 0;
   private currentScale: number = 1.0;
@@ -41,6 +48,10 @@ export class App {
 
   private watermarkSrcCache: { [key: string]: string } = {};
   private watermarkProcessing: { [key: string]: boolean } = {};
+
+  ngAfterViewInit() {
+    this.calculateContainerSize();
+  }
 
   get wmTemplateSrc(): string {
     if (this.mode === 'watermark') {
@@ -109,7 +120,33 @@ export class App {
   }
 
   onOrientationChange() {
+    this.calculateContainerSize();
     this.resetUploadState();
+  }
+
+  // 計算預覽/擷取容器的實際像素寬高。
+  // 桌機維持原本寫死的 400x600 / 600x400；
+  // 手機則用「面板可用寬度」直接算出對應比例的高度，
+  // 兩種情況最後都是明確的 px 數字，html2canvas 才能正確擷取。
+  private calculateContainerSize() {
+    const isMobile = window.innerWidth <= 768;
+
+    if (!isMobile) {
+      this.containerWidthPx = this.orientation === 'portrait' ? 400 : 600;
+      this.containerHeightPx = this.orientation === 'portrait' ? 600 : 400;
+      return;
+    }
+
+    const panelWidth =
+      this.cardCaptureArea?.nativeElement.parentElement?.clientWidth ?? window.innerWidth * 0.85;
+
+    if (this.orientation === 'portrait') {
+      this.containerWidthPx = panelWidth;
+      this.containerHeightPx = panelWidth * (3 / 2); // 4:6 = 2:3，高 = 寬 x 1.5
+    } else {
+      this.containerWidthPx = panelWidth;
+      this.containerHeightPx = panelWidth * (2 / 3); // 6:4 = 3:2，高 = 寬 x 2/3
+    }
   }
 
   private resetUploadState() {
@@ -243,22 +280,50 @@ export class App {
 
   @HostListener('window:resize')
   onWindowResize() {
-    if (this.isImageLoaded) {
-      this.clampImagePosition();
-    }
+    // 記錄 resize 前的容器寬度，等新的容器尺寸套用到畫面上之後，
+    // 依照寬度變化的比例，把已經定位好的照片（含縮放/位移）等比例
+    // 重新換算，而不是只夾住位置——避免旋轉手機或縮放視窗後
+    // 照片跟畫布比例對不起來、或露出空白邊。
+    const oldWidth = this.cardCaptureArea?.nativeElement.offsetWidth || 0;
+
+    this.calculateContainerSize();
+
+    setTimeout(() => {
+      const newWidth = this.cardCaptureArea?.nativeElement.offsetWidth || 0;
+
+      if (this.isImageLoaded && oldWidth > 0 && newWidth > 0 && oldWidth !== newWidth) {
+        const ratio = newWidth / oldWidth;
+        this.baseWidth *= ratio;
+        this.baseHeight *= ratio;
+        this.imgWidth *= ratio;
+        this.imgHeight *= ratio;
+        this.imgLeft *= ratio;
+        this.imgTop *= ratio;
+      }
+
+      if (this.isImageLoaded) {
+        this.clampImagePosition();
+      }
+    }, 0);
   }
 
   async downloadCardImage() {
     if (!this.cardCaptureArea) return;
+
+    const el = this.cardCaptureArea.nativeElement;
 
     const options: Partial<Options> = {
       scale: 4,
       useCORS: true,
       logging: false,
       backgroundColor: null,
+      // 明確告訴 html2canvas 要擷取的尺寸，不要讓它自己用不支援的
+      // CSS（如 aspect-ratio）去猜，避免手機版下載出來比例跑掉。
+      width: el.offsetWidth,
+      height: el.offsetHeight,
     };
 
-    const canvas = await html2canvas(this.cardCaptureArea.nativeElement, options);
+    const canvas = await html2canvas(el, options);
 
     canvas.toBlob(async (blob: Blob | null) => {
       if (!blob) return;
