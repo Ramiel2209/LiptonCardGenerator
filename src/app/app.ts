@@ -48,7 +48,8 @@ export class App {
       if (this.watermarkSrcCache[key]) {
         return this.watermarkSrcCache[key];
       }
-      const fileName = this.orientation === 'portrait' ? 'template-wm-ver.png' : 'template-wm-hor.png';
+      const fileName =
+        this.orientation === 'portrait' ? 'template-wm-ver.png' : 'template-wm-hor.png';
       if (!this.watermarkProcessing[key]) {
         this.watermarkProcessing[key] = true;
         this.processWatermarkTransparency(fileName, key);
@@ -164,16 +165,35 @@ export class App {
       this.imgTop = (cH - this.baseHeight) / 2;
     }
     this.applyTransform();
+    this.clampImagePosition();
   }
-
   handleZoom() {
+    // baseWidth/baseHeight 已經是「剛好覆蓋畫布」的最小尺寸，
+    // 縮放不可以小於 100%，否則四邊會露出空白造成報版
+    if (this.zoomValue < 100) {
+      this.zoomValue = 100;
+    }
     this.currentScale = this.zoomValue / 100;
     this.applyTransform();
+    this.clampImagePosition();
   }
 
   private applyTransform() {
     this.imgWidth = this.baseWidth * this.currentScale;
     this.imgHeight = this.baseHeight * this.currentScale;
+  }
+
+  // 限制圖片位置，確保拖曳/縮放後圖片仍完整覆蓋畫布，不會露出空白邊
+  private clampImagePosition() {
+    if (!this.cardCaptureArea) return;
+    const cW = this.cardCaptureArea.nativeElement.offsetWidth;
+    const cH = this.cardCaptureArea.nativeElement.offsetHeight;
+
+    const minLeft = Math.min(0, cW - this.imgWidth);
+    const minTop = Math.min(0, cH - this.imgHeight);
+
+    this.imgLeft = Math.min(0, Math.max(minLeft, this.imgLeft));
+    this.imgTop = Math.min(0, Math.max(minTop, this.imgTop));
   }
 
   onMouseDown(e: MouseEvent) {
@@ -189,13 +209,16 @@ export class App {
     this.isDragging = true;
     this.startX = e.touches[0].clientX;
     this.startY = e.touches[0].clientY;
-  }@HostListener('window:mousemove', ['$event'])
+  }
+
+  @HostListener('window:mousemove', ['$event'])
   onMouseMove(e: MouseEvent) {
     if (!this.isDragging) return;
     const dx = e.clientX - this.startX;
     const dy = e.clientY - this.startY;
     this.imgLeft += dx;
     this.imgTop += dy;
+    this.clampImagePosition();
     this.startX = e.clientX;
     this.startY = e.clientY;
   }
@@ -207,6 +230,7 @@ export class App {
     const dy = e.touches[0].clientY - this.startY;
     this.imgLeft += dx;
     this.imgTop += dy;
+    this.clampImagePosition();
     this.startX = e.touches[0].clientX;
     this.startY = e.touches[0].clientY;
   }
@@ -215,6 +239,13 @@ export class App {
   @HostListener('window:touchend')
   onDragEnd() {
     this.isDragging = false;
+  }
+
+  @HostListener('window:resize')
+  onWindowResize() {
+    if (this.isImageLoaded) {
+      this.clampImagePosition();
+    }
   }
 
   async downloadCardImage() {

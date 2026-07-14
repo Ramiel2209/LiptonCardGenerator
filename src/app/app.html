@@ -7,21 +7,11 @@
       <h3>1. 模式與版面設定</h3>
       <div class="radio-group">
         <label>
-          <input
-            type="radio"
-            [(ngModel)]="mode"
-            value="cover"
-            (change)="onModeChange()"
-          />
+          <input type="radio" [(ngModel)]="mode" value="cover" (change)="onModeChange()" />
           首圖模式
         </label>
         <label>
-          <input
-            type="radio"
-            [(ngModel)]="mode"
-            value="watermark"
-            (change)="onModeChange()"
-          />
+          <input type="radio" [(ngModel)]="mode" value="watermark" (change)="onModeChange()" />
           水印模式
         </label>
       </div>
@@ -87,7 +77,6 @@
 
     <button class="btn-submit" (click)="downloadCardImage()">🚀 生成並下載圖片</button>
   </div>
-
   <!-- 右側高清實時預覽 -->
   <div class="preview-panel">
     <h2>■ 高清實時預覽</h2>
@@ -96,6 +85,7 @@
       #cardCaptureArea
       class="preview-container"
       [ngClass]="orientation"
+      style="position: relative; overflow: hidden"
       (mousedown)="onMouseDown($event)"
       (touchstart)="onTouchStart($event)"
     >
@@ -104,6 +94,7 @@
         *ngIf="userImageSrc"
         [src]="userImageSrc"
         class="user-uploaded-image"
+        style="position: absolute; max-width: none"
         [style.left.px]="imgLeft"
         [style.top.px]="imgTop"
         [style.width.px]="imgWidth"
