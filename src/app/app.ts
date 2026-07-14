@@ -13,6 +13,7 @@ import html2canvas, { Options } from 'html2canvas';
 export class App {
   @ViewChild('cardCaptureArea', { static: false }) cardCaptureArea!: ElementRef<HTMLDivElement>;
 
+  mode: 'cover' | 'watermark' = 'cover';
   orientation: 'portrait' | 'landscape' = 'portrait';
   wmOpacity: number = 15;
   zoomValue: number = 100;
@@ -38,7 +39,79 @@ export class App {
   private startX: number = 0;
   private startY: number = 0;
 
+  private watermarkSrcCache: { [key: string]: string } = {};
+  private watermarkProcessing: { [key: string]: boolean } = {};
+
+  get wmTemplateSrc(): string {
+    if (this.mode === 'watermark') {
+      const key = this.orientation;
+      if (this.watermarkSrcCache[key]) {
+        return this.watermarkSrcCache[key];
+      }
+      const fileName = this.orientation === 'portrait' ? 'template-wm-ver.png' : 'template-wm-hor.png';
+      if (!this.watermarkProcessing[key]) {
+        this.watermarkProcessing[key] = true;
+        this.processWatermarkTransparency(fileName, key);
+      }
+      return fileName; // 處理完成前先顯示原圖，避免空白
+    }
+    return 'template-' + this.orientation + '-wm.png';
+  }
+
+  private processWatermarkTransparency(fileName: string, cacheKey: string) {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = fileName;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        this.watermarkProcessing[cacheKey] = false;
+        return;
+      }
+
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+
+      // 白色門檻值：越高代表越接近白色才會被去除，可依實際圖片微調
+      const threshold = 235;
+
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+
+        if (r >= threshold && g >= threshold && b >= threshold) {
+          data[i + 3] = 0; // 完全透明
+        } else {
+          // 讓白->黑之間的灰色邊緣也做柔化，避免鋸齒
+          const brightness = (r + g + b) / 3;
+          const alpha = 1 - Math.min(1, Math.max(0, (brightness - 180) / (threshold - 180)));
+          data[i + 3] = Math.round(alpha * 255);
+        }
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+      this.watermarkSrcCache[cacheKey] = canvas.toDataURL('image/png');
+      this.watermarkProcessing[cacheKey] = false;
+    };
+    img.onerror = () => {
+      this.watermarkProcessing[cacheKey] = false;
+    };
+  }
+
+  onModeChange() {
+    this.resetUploadState();
+  }
+
   onOrientationChange() {
+    this.resetUploadState();
+  }
+
+  private resetUploadState() {
     this.userImageSrc = null;
     this.imgElement = null;
     this.isImageLoaded = false;
@@ -116,9 +189,7 @@ export class App {
     this.isDragging = true;
     this.startX = e.touches[0].clientX;
     this.startY = e.touches[0].clientY;
-  }
-
-  @HostListener('window:mousemove', ['$event'])
+  }@HostListener('window:mousemove', ['$event'])
   onMouseMove(e: MouseEvent) {
     if (!this.isDragging) return;
     const dx = e.clientX - this.startX;
@@ -146,19 +217,61 @@ export class App {
     this.isDragging = false;
   }
 
-  downloadCardImage() {
+  async downloadCardImage() {
     if (!this.cardCaptureArea) return;
 
     const options: Partial<Options> = {
-      scale: 2, // 提高解析度
+      scale: 4,
       useCORS: true,
+      logging: false,
+      backgroundColor: null,
     };
 
-    html2canvas(this.cardCaptureArea.nativeElement, options).then((canvas: HTMLCanvasElement) => {
-      const link = document.createElement('a');
-      link.download = `result_card_${new Date().getTime()}.jpg`;
-      link.href = canvas.toDataURL('image/jpeg', 0.96);
-      link.click();
-    });
+    const canvas = await html2canvas(this.cardCaptureArea.nativeElement, options);
+
+    canvas.toBlob(async (blob: Blob | null) => {
+      if (!blob) return;
+
+      const fileName = `result_card_${new Date().getTime()}.png`;
+      const file = new File([blob], fileName, { type: 'image/png' });
+
+      // 手機且支援 Web Share API + 可分享檔案：走分享選單，讓使用者存到「照片」
+      if (this.canShareFile(file)) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: '圖卡',
+          });
+          return;
+        } catch (err: any) {
+          if (err?.name === 'AbortError') {
+            // 使用者自己在分享選單按取消，不需要 fallback 下載
+            return;
+          }
+          console.warn('分享失敗，改用下載', err?.name, err?.message);
+        }
+      }
+
+      // 桌面瀏覽器或不支援分享的環境：走下載
+      this.fallbackDownload(blob, fileName);
+    }, 'image/png');
+  }
+
+  private canShareFile(file: File): boolean {
+    return (
+      typeof navigator !== 'undefined' &&
+      !!navigator.share &&
+      !!navigator.canShare &&
+      navigator.canShare({ files: [file] })
+    );
+  }
+
+  private fallbackDownload(blob: Blob, fileName: string) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.download = fileName;
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 }
